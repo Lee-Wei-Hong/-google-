@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>google登入</title>
+    <script src="https://accounts.google.com/gsi/client" async></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+</head>
+<body>
+    <!-- 当彈跳視窗页面加载时，g_id_onload 会自动触发 Google 登录流程，并尝试验证当前用户的身份 -->
+    <div id="g_id_onload"
+    data-client_id="757847282620-37j3ig6s2brr6rjet4sgcpn85tqdd44n.apps.googleusercontent.com"
+    data-callback="handleCredentialResponse"
+    data-auto_prompt="false">
+</div>
+<!-- 這段程式碼會顯示一個 Google 登入按鈕，當用戶點擊該按鈕時，會觸發 Google 登入流程，並根據設定顯示一個登入視窗。 -->
+<!-- 按下這個按鈕後，Google 會顯示一個登入視窗，讓用戶輸入其 Google 帳號和密碼。 -->
+<div class="g_id_signin"
+data-type="standard"
+data-size="large"
+data-theme="outline"
+data-text="sign_in_with"
+data-shape="rectangular"
+data-logo_alignment="left">
+</div>
+<label for="jWTInput">取得JWT</label>
+<input class="jwtInput" type="text" id="jWTInput" placeholder="JWT">
+<button class="btn" type="button">驗證Id token</button>
+<!-- <label for="userIDInput">取得client ID</label>
+<input class="userIDInput" type="text" id="userIDInput" placeholder="client ID"> -->
+<button class="btn1" type="button">用公鑰驗證Id token</button>
+<div>
+    <ul></ul>
+</div>
+<script>
+    function handleCredentialResponse(response) {
+        console.log("收到的 JWT ID token:", response.credential);
+        document.getElementById("jWTInput").value = response.credential;
+        const decoded = jwtTokenEncoded(response.credential);
+        console.log("解析JWT 使用者資訊",decoded);
+        var el = document.querySelector("ul");
+        el.innerHTML = `<li>發行者 (Issuer)，表示此 Token 由 Google 簽發:${decoded["payload"]["iss"]}</li>
+        <li>合法取得 Token 的應用程式（即發起 OAuth 2.0 授權流程的應用）:${decoded["payload"]["azp"]}</li>
+        <li>這個 Token 最終是發給哪個應用使用的，值會是Google OAuth 客戶端 ID:${decoded["payload"]["aud"]}</li>
+        <li>使用者唯一 ID (Subject)，Google 帳戶的唯一識別碼:${decoded["payload"]["sub"]}</li> 
+        <li>使用者電子郵件 (Email):${decoded["payload"]["email"]}</li>
+        <li>電子郵件驗證狀態:${decoded["payload"]["email_verified"]}</li>
+        <li>生效時間 (Not Before)，Token 在此時間之前無效 (UNIX 時間戳):${decoded["payload"]["nbf"]}</li>
+        <li>使用者姓名:${decoded["payload"]["name"]}</li>
+        <li>使用者頭像圖片網址 (Profile Picture):${decoded["payload"]["picture"]}</li>
+        <li>名字 (Given Name):${decoded["payload"]["given_name"]}</li>
+        <li>姓氏:${decoded["payload"]["family_name"]}</li>
+        <li>簽發時間:${decoded["payload"]["iat"]}</li>
+        <li>過期時間:${decoded["payload"]["exp"]}</li>
+        <li>token 唯一識別碼 (JWT ID):${decoded["payload"]["jti"]}</li>`
+    }
+    // 正確的 Base64 解碼函式，支援 UTF-8
+    const Base64decoded = (str) => {
+        str = str.replace(/-/g, '+').replace(/_/g, '/');
+        
+        // 確保 Base64 字符串長度是 4 的倍數，補 "="
+        while (str.length % 4 !== 0) {
+            str += '=';
+        }
+        
+        // atob() 解碼成二進制數據
+        const binary = atob(str);
+        
+        // 轉換成 Uint8Array
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+        
+        // 使用 TextDecoder 正確解碼 UTF-8 
+        // 因為名字有中文 所以要用utf-8解碼
+        return new TextDecoder("utf-8").decode(bytes);
+    };
+    
+    // 解析 JWT Token
+    const jwtTokenEncoded = (str) => {
+        if(!str) return console.log('請輸入 JWT Token');
+        const [header, payload, signature] = str.split('.');
+        
+        const headerDecoded = JSON.parse(Base64decoded(header));
+        const payloadDecoded = JSON.parse(Base64decoded(payload));
+        
+        return {
+            header: headerDecoded,
+            payload: payloadDecoded,
+        }
+    }
+    //验证 Google ID Token(JWT)
+    async function verifyGoogleIdToken() {
+        var idToken = document.getElementById("jWTInput").value;
+        await axios.get(`https://localhost:44341/api/Google/VerifyToken?id_token=${idToken}`,{})
+        .then((res)=>{
+            console.log("res:"+JSON.stringify(res));
+        }).catch((msg)=>{
+            console.log("msg:"+JSON.stringify(msg));
+        })
+        
+        
+    }
+    //用公鑰驗證 Google ID Token(JWT)
+    async function ValidateGoogleTokenAsync(){
+        var idToken = document.getElementById("jWTInput").value;
+        await axios.post("https://localhost:44341/api/Google/ValidateGoogleTokenAsync",{},{
+            params:{
+                id_token:idToken
+            }
+        }).then((res)=>{
+            console.log("res:"+JSON.stringify(res));
+        }).catch((msg)=>{
+            console.log("msg:"+JSON.stringify(msg));
+        })
+    }
+    var btn = document.querySelector(".btn");
+    btn.addEventListener("click",verifyGoogleIdToken,false);
+    var btn1 = document.querySelector(".btn1");
+    btn1.addEventListener("click",ValidateGoogleTokenAsync,false);
+    
+    
+    
+</script>
+<body>
+    </html>
