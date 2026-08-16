@@ -56,6 +56,7 @@ data-logo_alignment="left">
         <li>過期時間:${decoded["payload"]["exp"]}</li>
         <li>token 唯一識別碼 (JWT ID):${decoded["payload"]["jti"]}</li>`
     }
+
     // 正確的 Base64 解碼函式，支援 UTF-8
     const Base64decoded = (str) => {
         str = str.replace(/-/g, '+').replace(/_/g, '/');
